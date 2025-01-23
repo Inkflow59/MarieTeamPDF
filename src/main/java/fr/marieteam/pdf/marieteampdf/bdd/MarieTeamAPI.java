@@ -50,7 +50,7 @@ public class MarieTeamAPI {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet resultSet = statement.executeQuery(query)) {
                     while (resultSet.next()) {
-                        String boat = resultSet.getString("Nom du Bateau") + " - " + resultSet.getString("Catégorie") + " (" + resultSet.getString("Capacité") + " autorisés, " + resultSet.getString("Nombre de Traversées") + " traversees)";
+                        String boat = resultSet.getString("Nom du Bateau") + " - " + resultSet.getString("Catégorie") + " (" + resultSet.getString("Capacité") + " autorisés), " + resultSet.getString("Nombre de Traversées") + " traversees)";
                         boats.add(boat);
                     }
                 }
