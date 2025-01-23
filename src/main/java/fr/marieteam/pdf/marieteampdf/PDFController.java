@@ -3,7 +3,7 @@ package fr.marieteam.pdf.marieteampdf;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 
-public class HelloController {
+public class PDFController {
     @FXML
     private Label welcomeText;
 
