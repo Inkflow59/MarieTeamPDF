@@ -7,23 +7,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 public class MarieTeamAPI {
-    public MarieTeamAPI() throws Exception {
-        String hostname = "localhost";
-        String port = "3306";
-        String database = "marieteam";
-        String username = "root";
-        String password = "";
-
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password);
-            System.out.println("Connexion à la base de données " + database + " réussie");
-        }   catch (Exception e) {
-            System.out.println("Connexion à la base de données " + database + " échouée");
-            throw e;
-        }
-    }
-
     public ArrayList<String> getAllBoats() throws Exception {
         ArrayList<String> boats = new ArrayList<>();
         String hostname = "localhost";

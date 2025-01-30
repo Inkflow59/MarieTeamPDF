@@ -2,7 +2,6 @@ module fr.marieteam.pdf.marieteampdf {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.sql;
-    requires mysql.connector.java;
 
 
     opens fr.marieteam.pdf.marieteampdf to javafx.fxml;
