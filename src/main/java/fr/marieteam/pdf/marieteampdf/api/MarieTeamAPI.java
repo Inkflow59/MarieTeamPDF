@@ -1,4 +1,4 @@
-package fr.marieteam.pdf.marieteampdf.bdd;
+package fr.marieteam.pdf.marieteampdf.api;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

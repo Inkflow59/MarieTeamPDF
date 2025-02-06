@@ -1,6 +1,6 @@
 package fr.marieteam.pdf.marieteampdf;
 
-import fr.marieteam.pdf.marieteampdf.bdd.MarieTeamAPI;
+import fr.marieteam.pdf.marieteampdf.api.MarieTeamAPI;
 
 public class Program {
     public static void main(String[] args) throws Exception {
