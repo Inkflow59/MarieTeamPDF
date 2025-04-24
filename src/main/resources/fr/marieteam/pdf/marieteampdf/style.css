@@ -1,0 +1,57 @@
+/* Style général */
+.root {
+    -fx-font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* Arrière-plan principal */
+.welcome-background {
+    -fx-background-color: linear-gradient(to bottom, #f0f8ff, #e6f2ff);
+}
+
+/* Titre de bienvenue */
+.welcome-title {
+    -fx-text-fill: #003366;
+    -fx-font-weight: bold;
+    -fx-font-size: 36px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 4, 0, 0, 2);
+}
+
+/* Sous-titre */
+.welcome-subtitle {
+    -fx-text-fill: #004080;
+    -fx-font-size: 24px;
+}
+
+/* Style du bouton principal */
+.welcome-button {
+    -fx-background-color: #003366;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 3);
+    -fx-cursor: hand;
+}
+
+.welcome-button:hover {
+    -fx-background-color: #004080;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 4);
+}
+
+.welcome-button:pressed {
+    -fx-background-color: #002952;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Pied de page */
+.footer {
+    -fx-background-color: #003366;
+    -fx-alignment: center;
+}
+
+.footer-text {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
