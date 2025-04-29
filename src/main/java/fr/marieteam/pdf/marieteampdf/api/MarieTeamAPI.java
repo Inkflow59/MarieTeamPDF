@@ -1,5 +1,10 @@
 package fr.marieteam.pdf.marieteampdf.api;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -20,9 +25,10 @@ public class MarieTeamAPI {
         ArrayList<String> boats = new ArrayList<>();
         String query = "SELECT \n" +
                 "    b.idBat, b.nomBat AS 'Nom du Bateau',\n" +
-                "    c.lettre, c.libelleCat AS 'Catégorie',\n" +
-                "    co.capaciteMax AS 'Capacité',\n" +
-                "    COUNT(DISTINCT t.numTra) AS 'Nombre de Traversées'\n" +
+                "    GROUP_CONCAT(DISTINCT CONCAT(c.lettre, ' - ', c.libelleCat) SEPARATOR ', ') AS 'Catégories',\n" +
+                "    GROUP_CONCAT(DISTINCT co.capaciteMax SEPARATOR ', ') AS 'Capacités',\n" +
+                "    COUNT(DISTINCT t.numTra) AS 'Nombre de Traversées',\n" +
+                "    b.lienImage AS 'Image'\n" +
                 "FROM \n" +
                 "    bateau b\n" +
                 "LEFT JOIN \n" +
@@ -32,7 +38,7 @@ public class MarieTeamAPI {
                 "LEFT JOIN \n" +
                 "    traversee t ON b.idBat = t.idBat\n" +
                 "GROUP BY \n" +
-                "    b.idBat, b.nomBat, c.lettre, c.libelleCat, co.capaciteMax\n" +
+                "    b.idBat, b.nomBat\n" +
                 "ORDER BY b.nomBat;";
         try (Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password)) {
             System.out.println("Connexion à la base de données établie");
@@ -41,14 +47,20 @@ public class MarieTeamAPI {
                 try (ResultSet resultSet = statement.executeQuery(query)) {
                     while (resultSet.next()) {
                         String boatName = resultSet.getString("Nom du Bateau");
-                        String category = resultSet.getString("Catégorie");
-                        int capacity = resultSet.getInt("Capacité");
+                        String categories = resultSet.getString("Catégories");
+                        String capacities = resultSet.getString("Capacités");
                         int numTraversees = resultSet.getInt("Nombre de Traversées");
+                        String imageUrl = resultSet.getString("Image");
                         
-                        // Format: "Nom du Bateau - Catégorie (Capacité autorisés), X traversée(s)"
-                        String boat = boatName + " - " + category + " (" + capacity + " autorisés), " + numTraversees + " traversée(s)";
+                        // Format: "Nom du Bateau - Catégories (Capacités), X traversée(s)"
+                        String boat = boatName + " - " + categories + " (" + capacities + "), " + numTraversees + " traversée(s)";
                         System.out.println("Bateau trouvé: " + boat);
                         boats.add(boat);
+                        
+                        // Si une image est disponible, la télécharger
+                        if (imageUrl != null && !imageUrl.isEmpty()) {
+                            downloadBoatImage(boatName, imageUrl);
+                        }
                     }
                 }
             }
@@ -181,7 +193,8 @@ public class MarieTeamAPI {
         String query = "SELECT \n" +
                 "    b.idBat, b.nomBat,\n" +
                 "    c.lettre, c.libelleCat,\n" +
-                "    co.capaciteMax\n" +
+                "    co.capaciteMax,\n" +
+                "    b.lienImage\n" +
                 "FROM \n" +
                 "    bateau b\n" +
                 "LEFT JOIN \n" +
@@ -207,6 +220,7 @@ public class MarieTeamAPI {
                         boatInfo.put("categorieLetter", resultSet.getString("lettre"));
                         boatInfo.put("categorieLibelle", resultSet.getString("libelleCat"));
                         boatInfo.put("capaciteMax", resultSet.getInt("capaciteMax"));
+                        boatInfo.put("lienImage", resultSet.getString("lienImage"));
                         
                         System.out.println("Récupération des traversées pour le bateau ID: " + idBat);
                         ArrayList<Map<String, Object>> traversees = getBoatTraversees(idBat);
@@ -223,5 +237,30 @@ public class MarieTeamAPI {
             throw e;
         }
         return boatInfo;
+    }
+
+    private void downloadBoatImage(String boatName, String imageUrl) {
+        try {
+            // Créer le dossier images s'il n'existe pas
+            File imageDir = new File("images");
+            if (!imageDir.exists()) {
+                imageDir.mkdir();
+            }
+            
+            // Télécharger l'image
+            URL url = new URL(imageUrl);
+            String fileName = "images/" + boatName.replaceAll("[^a-zA-Z0-9]", "_") + ".jpg";
+            try (InputStream in = url.openStream();
+                 OutputStream out = new FileOutputStream(fileName)) {
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+            }
+            System.out.println("Image téléchargée pour le bateau: " + boatName);
+        } catch (Exception e) {
+            System.err.println("Erreur lors du téléchargement de l'image pour le bateau " + boatName + ": " + e.getMessage());
+        }
     }
 }

@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
@@ -76,9 +78,8 @@ public class GenererPDFController {
             showError("Erreur lors du chargement des bateaux", e.getMessage());
         }
     }
-    
-    @FXML
-    private void afficherInformationsBateau() {
+      @FXML
+    public void afficherInformationsBateau() { // changé en public pour être appelable par FXML
         if (selectedBateau == null) {
             showError("Erreur", "Aucun bateau sélectionné");
             return;
@@ -138,30 +139,30 @@ public class GenererPDFController {
             e.printStackTrace();
             showError("Erreur lors de la récupération des informations", "Détails: " + e.getMessage());
         }
-    }
-    
-    @FXML
-    private void genererPDF() {
+    }    @FXML
+    public void genererPDF() { // changé en public pour être appelable par FXML
         if (selectedBateau == null) return;
         
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Enregistrer le PDF");
         fileChooser.getExtensionFilters().add(
             new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
-        fileChooser.setInitialFileName(selectedBateau + "_rapport.pdf");
+        fileChooser.setInitialFileName(selectedBateau.split(" - ")[0] + "_rapport.pdf");
         
         File file = fileChooser.showSaveDialog(btnGenererPDF.getScene().getWindow());
         if (file == null) return;
         
         try {
-            Map<String, Object> boatInfo = api.getBoatInfoByName(selectedBateau);
-            
-            PdfWriter writer = new PdfWriter(file);
-            PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf);
+            // Extraire le nom simple du bateau (avant le premier " - ")
+            String simpleName = selectedBateau.split(" - ")[0];
+            Map<String, Object> boatInfo = api.getBoatInfoByName(simpleName);
+              // Utiliser try-with-resources pour fermer automatiquement les ressources
+            try (PdfWriter writer = new PdfWriter(file);
+                PdfDocument pdf = new PdfDocument(writer);
+                Document document = new Document(pdf)) {
             
             // En-tête
-            Paragraph title = new Paragraph("Rapport du bateau " + selectedBateau)
+            Paragraph title = new Paragraph("Rapport du bateau " + simpleName)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setFontSize(20);
             document.add(title);
@@ -177,42 +178,88 @@ public class GenererPDFController {
             
             document.add(bateauTable);
             
-            // Liste des traversées
-            document.add(new Paragraph("\nListe des traversées:").setFontSize(16));
-            Table traverseeTable = new Table(5);
-            traverseeTable.setWidth(UnitValue.createPercentValue(100));
-            
+            // Ajouter les informations des traversées s'il y en a (limité aux 10 premières)
             Object traverseesObj = boatInfo.get("traversees");
-            if (traverseesObj instanceof ArrayList<?>) {
-                ArrayList<Map<String, Object>> traversees = new ArrayList<>();
-                for (Object obj : (ArrayList<?>) traverseesObj) {
+            if (traverseesObj instanceof ArrayList<?> && !((ArrayList<?>) traverseesObj).isEmpty()) {
+                document.add(new Paragraph("\nTraversées:").setFontSize(16));
+                Table traverseesTable = new Table(5);
+                traverseesTable.setWidth(UnitValue.createPercentValue(100));
+                
+                // En-têtes
+                addTableRow(traverseesTable, "Date", "Heure", "Départ", "Arrivée", "Secteur");
+                
+                // Données des traversées (limité aux 10 premières)
+                ArrayList<?> traversees = (ArrayList<?>) traverseesObj;
+                int count = 0;
+                int maxTraversees = 10; // Limiter à 10 traversées
+                
+                for (Object obj : traversees) {
+                    if (count >= maxTraversees) break; // Sortir après 10 traversées
+                    
                     if (obj instanceof Map<?, ?>) {
                         @SuppressWarnings("unchecked")
-                        Map<String, Object> map = (Map<String, Object>) obj;
-                        traversees.add(map);
+                        Map<String, Object> traversee = (Map<String, Object>) obj;
+                        addTableRow(traverseesTable, 
+                            String.valueOf(traversee.get("date")),
+                            String.valueOf(traversee.get("heure")),
+                            String.valueOf(traversee.get("portDepart")),
+                            String.valueOf(traversee.get("portArrivee")),
+                            String.valueOf(traversee.get("secteur"))
+                        );
+                        count++;
                     }
                 }
-                for (Map<String, Object> traversee : traversees) {
-                    addTableRow(traverseeTable, 
-                        (String) traversee.get("date"),
-                        (String) traversee.get("heure"),
-                        (String) traversee.get("portDepart"),
-                        (String) traversee.get("portArrivee"),
-                        (String) traversee.get("secteur"));
+                
+                document.add(traverseesTable);
+                
+                // Ajouter une note si plus de 10 traversées sont disponibles
+                if (traversees.size() > maxTraversees) {
+                    document.add(new Paragraph("Note: Seules les 10 premières traversées sont affichées sur un total de " + traversees.size())
+                        .setFontSize(10)
+                        .setItalic());
                 }
             }
             
-            document.add(traverseeTable);
-            document.close();
-            
+            // Ajouter l'image du bateau en utilisant la méthode robuste de recherche
+            try {
+                // Utiliser notre méthode améliorée pour trouver l'image
+                File imageFile = findBoatImage(simpleName);
+                
+                // Si une image a été trouvée, l'ajouter au PDF
+                if (imageFile != null && imageFile.exists() && imageFile.length() > 0) {
+                    System.out.println("Utilisation de l'image: " + imageFile.getAbsolutePath());
+                    System.out.println("Taille de l'image: " + imageFile.length() + " bytes");
+                    
+                    // Ajouter l'image au PDF
+                    byte[] imageData = java.nio.file.Files.readAllBytes(imageFile.toPath());
+                    Image image = new Image(ImageDataFactory.create(imageData));
+                    image.setWidth(UnitValue.createPercentValue(60));
+                    image.setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);
+                    document.add(new Paragraph("\nImage du bateau:").setFontSize(16));
+                    document.add(image);
+                    System.out.println("Image ajoutée au PDF avec succès");
+                } else {                System.err.println("Aucune image trouvée pour le bateau: " + simpleName);
+                    document.add(new Paragraph("\nAucune image disponible pour ce bateau").setFontSize(14).setItalic());
+                }
+            } catch (Exception e) {
+                System.err.println("Erreur lors de l'ajout de l'image au PDF: " + e.getMessage());
+                e.printStackTrace();
+                document.add(new Paragraph("\nErreur lors du chargement de l'image").setFontSize(14).setItalic());
+            }
+            }
+              // Le document se fermera automatiquement avec try-with-resources
             showInfo("Succès", "Le PDF a été généré avec succès!");
             
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            showError("Erreur lors de la génération du PDF", e.getMessage());
+            System.err.println("Fichier non trouvé: " + e.getMessage());
+            showError("Erreur lors de la génération du PDF", "Impossible de créer le fichier PDF. " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Erreur d'entrée/sortie: " + e.getMessage());
+            showError("Erreur lors de la génération du PDF", "Erreur lors de l'écriture du PDF. " + e.getMessage());
         } catch (Exception e) {
+            System.err.println("Erreur inattendue: " + e.getMessage());
             e.printStackTrace();
-            showError("Erreur lors de la récupération des données", e.getMessage());
+            showError("Erreur lors de la récupération des données", "Une erreur est survenue. " + e.getMessage());
         }
     }
     
@@ -222,9 +269,8 @@ public class GenererPDFController {
             table.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(cellValue)));
         }
     }
-    
-    @FXML
-    private void retourAccueil() {
+      @FXML
+    public void retourAccueil() { // changé en public pour être appelable par FXML
         try {
             MainApp.setRoot("Welcome.fxml");
         } catch (IOException e) {
@@ -248,4 +294,103 @@ public class GenererPDFController {
         alert.setContentText(content);
         alert.showAndWait();
     }
-} 
+    
+    /**
+     * Trouve un fichier image pour un bateau donné
+     * Recherche dans plusieurs emplacements possibles pour être plus robuste
+     */
+    private File findBoatImage(String boatName) {
+        System.out.println("Recherche d'une image pour le bateau: " + boatName);
+        
+        // Normaliser le nom pour la recherche de fichier
+        String normalizedName = boatName.replaceAll("[^a-zA-Z0-9]", "_");
+        System.out.println("Nom normalisé pour la recherche: " + normalizedName);
+        
+        // Liste des chemins possibles à vérifier
+        String[] possiblePaths = {
+            "images/" + normalizedName + ".jpg",
+            "images/" + normalizedName + ".png",
+            "./images/" + normalizedName + ".jpg",
+            "./images/" + normalizedName + ".png",
+            "../images/" + normalizedName + ".jpg",
+            "../images/" + normalizedName + ".png"
+        };
+        
+        // Afficher le répertoire de travail actuel pour le débogage
+        System.out.println("Répertoire de travail actuel: " + System.getProperty("user.dir"));
+        
+        // Vérifier si le dossier images existe
+        File imagesDir = new File("images");
+        System.out.println("Le dossier 'images' existe-t-il? " + imagesDir.exists());
+        System.out.println("Chemin absolu du dossier 'images': " + imagesDir.getAbsolutePath());
+        
+        // Liste tous les fichiers du dossier images pour le débogage
+        if (imagesDir.exists() && imagesDir.isDirectory()) {
+            System.out.println("Contenu du dossier 'images':");
+            File[] allFiles = imagesDir.listFiles();
+            if (allFiles != null) {
+                for (File f : allFiles) {
+                    System.out.println(" - " + f.getName());
+                }
+            } else {
+                System.out.println("Impossible de lister les fichiers du dossier 'images'");
+            }
+        }
+        
+        // Essayer les chemins directs d'abord
+        for (String path : possiblePaths) {
+            File file = new File(path);
+            System.out.println("Vérification du chemin: " + path + " (absolu: " + file.getAbsolutePath() + ")");
+            if (file.exists()) {
+                System.out.println("Image trouvée: " + file.getAbsolutePath());
+                return file;
+            }
+        }
+        
+        // Si aucun chemin direct ne fonctionne, chercher dans le dossier images
+        if (imagesDir.exists() && imagesDir.isDirectory()) {
+            // D'abord, essayer de faire correspondre sur la base du nom normalisé
+            File[] matchingFiles = imagesDir.listFiles((dir, name) -> 
+                name.toLowerCase().contains(normalizedName.toLowerCase()) && 
+                (name.endsWith(".jpg") || name.endsWith(".png"))
+            );
+            
+            if (matchingFiles != null && matchingFiles.length > 0) {
+                System.out.println("Image trouvée par correspondance de nom: " + matchingFiles[0].getName());
+                return matchingFiles[0];
+            }
+            
+            // Ensuite, essayer de faire correspondre sur des parties du nom original
+            String[] searchTerms = boatName.split(" ");
+            for (String term : searchTerms) {
+                if (term.length() > 2) { // Ignorer les termes trop courts
+                    String searchTerm = term.toLowerCase();
+                    System.out.println("Recherche d'images contenant: " + searchTerm);
+                    
+                    matchingFiles = imagesDir.listFiles((dir, name) -> 
+                        name.toLowerCase().contains(searchTerm) && 
+                        (name.endsWith(".jpg") || name.endsWith(".png"))
+                    );
+                    
+                    if (matchingFiles != null && matchingFiles.length > 0) {
+                        System.out.println("Image trouvée par correspondance partielle: " + matchingFiles[0].getName());
+                        return matchingFiles[0];
+                    }
+                }
+            }
+            
+            // En dernier recours, prendre n'importe quelle image
+            File[] anyImage = imagesDir.listFiles((dir, name) -> 
+                name.endsWith(".jpg") || name.endsWith(".png")
+            );
+            
+            if (anyImage != null && anyImage.length > 0) {
+                System.out.println("Aucune correspondance trouvée, utilisation d'une image par défaut: " + anyImage[0].getName());
+                return anyImage[0];
+            }
+        }
+        
+        System.out.println("Aucune image trouvée pour le bateau: " + boatName);
+        return null;
+    }
+}
