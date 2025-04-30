@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : jeu. 23 jan. 2025 à 08:44
+-- Généré le : mer. 30 avr. 2025 à 14:06
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -43,7 +43,8 @@ CREATE TABLE `admin` (
 
 CREATE TABLE `bateau` (
   `idBat` int(11) NOT NULL,
-  `nomBat` varchar(255) DEFAULT NULL
+  `nomBat` varchar(255) DEFAULT NULL,
+  `lienImage` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -142,19 +143,18 @@ CREATE TRIGGER `PlusDePlace` BEFORE INSERT ON `reservation` FOR EACH ROW BEGIN
     DECLARE nombreReservations INT;
 
     -- Récupérer la capacité maximale du bateau lié à la traversée
-    SELECT SUM(contenir.capaciteMax) 
+    SELECT contenir.capaciteMax 
     INTO capaciteBateau
     FROM contenir
     JOIN bateau ON contenir.idBat = bateau.idBat
     JOIN traversee ON traversee.idBat = bateau.idBat
-    WHERE traversee.numTra = NEW.numTra
-    GROUP BY traversee.idBat;
+    WHERE traversee.numTra = NEW.numTra;
 
     -- Compter le nombre de réservations existantes pour la traversée
     SELECT COUNT(*) 
     INTO nombreReservations
     FROM reservation
-    WHERE numTra = NEW.numTra;
+    WHERE reservation.numTra = NEW.numTra;
 
     -- Vérifier si la capacité est dépassée
     IF (nombreReservations >= capaciteBateau) THEN
@@ -163,7 +163,7 @@ CREATE TRIGGER `PlusDePlace` BEFORE INSERT ON `reservation` FOR EACH ROW BEGIN
     END IF;
 END
 $$
-DELIMITER;
+DELIMITER ;
 
 -- --------------------------------------------------------
 

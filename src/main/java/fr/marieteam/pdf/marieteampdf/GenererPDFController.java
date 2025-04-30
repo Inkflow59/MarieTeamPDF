@@ -48,7 +48,7 @@ public class GenererPDFController {
     private VBox traverseesInfoBox;
     
     private String selectedBateau;
-    private ObservableList<String> bateauxList = FXCollections.observableArrayList();
+    private final ObservableList<String> bateauxList = FXCollections.observableArrayList();
     private MarieTeamAPI api;
     
     @FXML
@@ -66,6 +66,9 @@ public class GenererPDFController {
         
         // Désactiver le bouton d'affichage initialement
         btnAfficherInfo.setDisable(true);
+        
+        // Configurer le bouton retour
+        btnRetour.setOnAction(e -> retourAccueil());
     }
     
     private void loadBateaux() {
@@ -74,7 +77,7 @@ public class GenererPDFController {
             bateauxList.clear();
             bateauxList.addAll(boats);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Erreur lors du chargement des bateaux: " + e.getMessage());
             showError("Erreur lors du chargement des bateaux", e.getMessage());
         }
     }
@@ -105,28 +108,24 @@ public class GenererPDFController {
             
             // Afficher les traversées
             Object traverseesObj = boatInfo.get("traversees");
-            if (traverseesObj instanceof ArrayList<?>) {
-                ArrayList<Map<String, Object>> traversees = new ArrayList<>();
-                for (Object obj : (ArrayList<?>) traverseesObj) {
-                    if (obj instanceof Map<?, ?>) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> map = (Map<String, Object>) obj;
-                        traversees.add(map);
-                    }
-                }
+            if (traverseesObj instanceof ArrayList<?> traversees) {
                 traverseesInfoBox.getChildren().clear();
                 
                 if (traversees.isEmpty()) {
                     traverseesInfoBox.getChildren().add(new Label("Aucune traversée trouvée pour ce bateau"));
                 } else {
-                    for (Map<String, Object> traversee : traversees) {
-                        VBox traverseeBox = new VBox(5);
-                        traverseeBox.getChildren().add(new Label("Date: " + traversee.get("date")));
-                        traverseeBox.getChildren().add(new Label("Heure: " + traversee.get("heure")));
-                        traverseeBox.getChildren().add(new Label("Port de départ: " + traversee.get("portDepart")));
-                        traverseeBox.getChildren().add(new Label("Port d'arrivée: " + traversee.get("portArrivee")));
-                        traverseeBox.getChildren().add(new Label("Secteur: " + traversee.get("secteur")));
-                        traverseesInfoBox.getChildren().add(traverseeBox);
+                    for (Object obj : traversees) {
+                        if (obj instanceof Map<?, ?> traversee) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = (Map<String, Object>) traversee;
+                            VBox traverseeBox = new VBox(5);
+                            traverseeBox.getChildren().add(new Label("Date: " + map.get("date")));
+                            traverseeBox.getChildren().add(new Label("Heure: " + map.get("heure")));
+                            traverseeBox.getChildren().add(new Label("Port de départ: " + map.get("portDepart")));
+                            traverseeBox.getChildren().add(new Label("Port d'arrivée: " + map.get("portArrivee")));
+                            traverseeBox.getChildren().add(new Label("Secteur: " + map.get("secteur")));
+                            traverseesInfoBox.getChildren().add(traverseeBox);
+                        }
                     }
                 }
                 
@@ -136,7 +135,7 @@ public class GenererPDFController {
                 traverseesInfoBox.getChildren().add(new Label("Format de données de traversées invalide"));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Erreur lors de la récupération des informations: " + e.getMessage());
             showError("Erreur lors de la récupération des informations", "Détails: " + e.getMessage());
         }
     }    @FXML
@@ -270,11 +269,11 @@ public class GenererPDFController {
         }
     }
       @FXML
-    public void retourAccueil() { // changé en public pour être appelable par FXML
+    public void retourAccueil() {
         try {
             MainApp.setRoot("Welcome.fxml");
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Erreur lors du retour à l'accueil: " + e.getMessage());
             showError("Erreur lors du retour à l'accueil", e.getMessage());
         }
     }
