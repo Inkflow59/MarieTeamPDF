@@ -180,12 +180,12 @@
                         <phase>prepare-package</phase>
                         <goals>
                             <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
+                        </goals>                        <configuration>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <overWriteReleases>false</overWriteReleases>
-                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
                             <overWriteIfNewer>true</overWriteIfNewer>
+                            <includeScope>runtime</includeScope>
                         </configuration>
                     </execution>
                 </executions>
@@ -220,6 +220,29 @@
                                 </filter>
                             </filters>
                         </configuration>
+                    </execution>                </executions>
+            </plugin>
+            
+            <!-- Plugin pour copier les images dans le répertoire target -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-images</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/images</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/images</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -241,14 +264,20 @@
                             <jar>${project.build.directory}/MarieTeamPDF.jar</jar>
                             <errTitle>MarieTeam PDF Generator</errTitle>                            <classPath>
                                 <mainClass>fr.marieteam.pdf.marieteampdf.MainApp</mainClass>
-                            </classPath>
-                            <jre>
+                                <addDependencies>true</addDependencies>
+                                <jarLocation>lib</jarLocation>
+                            </classPath>                            <jre>
+                                <path>%JAVA_HOME%</path>
                                 <minVersion>17</minVersion>
-                                <path>./jre</path>
-                                <bundledJre64Bit>true</bundledJre64Bit>
-                                <bundledJreAsFallback>true</bundledJreAsFallback>
-                                <jdkPreference>preferJre</jdkPreference>
-                                <runtimeBits>64/32</runtimeBits>
+                                <opts>
+                                    <opt>--add-opens=java.base/java.lang=ALL-UNNAMED</opt>
+                                    <opt>--module-path "%EXEDIR%\lib"</opt>
+                                    <opt>--add-modules=javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media</opt>
+                                </opts>
+                                <jdkPreference>preferJdk</jdkPreference>
+                                <initialHeapSize>256</initialHeapSize>
+                                <maxHeapSize>1024</maxHeapSize>
+                                <runtimeBits>64</runtimeBits>
                             </jre>
                             <versionInfo>
                                 <fileVersion>1.0.0.0</fileVersion>
