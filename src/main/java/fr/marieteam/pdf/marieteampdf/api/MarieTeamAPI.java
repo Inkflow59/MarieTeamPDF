@@ -14,21 +14,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MarieTeamAPI {
-    private String hostname = "localhost";
-    private String port = "3306";
-    private String database = "marieteam";
-    private String username = "root";
-    private String password = "";
+    private final String hostname = "localhost";
+    private final String port = "3306";
+    private final String database = "marieteam";
+    private final String username = "root";
+    private final String password = "";
     
     public ArrayList<String> getAllBoats() throws Exception {
         System.out.println("Récupération de la liste des bateaux");
-        ArrayList<String> boats = new ArrayList<>();
-        String query = "SELECT \n" +
+        ArrayList<String> boats = new ArrayList<>();        String query = "SELECT \n" +
                 "    b.idBat, b.nomBat AS 'Nom du Bateau',\n" +
                 "    GROUP_CONCAT(DISTINCT CONCAT(c.lettre, ' - ', c.libelleCat) SEPARATOR ', ') AS 'Catégories',\n" +
                 "    GROUP_CONCAT(DISTINCT co.capaciteMax SEPARATOR ', ') AS 'Capacités',\n" +
                 "    COUNT(DISTINCT t.numTra) AS 'Nombre de Traversées',\n" +
-                "    b.lienImage AS 'Image'\n" +
+                "    b.lienImage AS 'Image',\n" +
+                "    b.Equipements\n" +
                 "FROM \n" +
                 "    bateau b\n" +
                 "LEFT JOIN \n" +
@@ -38,15 +38,14 @@ public class MarieTeamAPI {
                 "LEFT JOIN \n" +
                 "    traversee t ON b.idBat = t.idBat\n" +
                 "GROUP BY \n" +
-                "    b.idBat, b.nomBat\n" +
+                "    b.idBat, b.nomBat, b.Equipements\n" +
                 "ORDER BY b.nomBat;";
         try (Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password)) {
             System.out.println("Connexion à la base de données établie");
             try (Statement statement = connection.createStatement()) {
                 System.out.println("Exécution de la requête: " + query);
                 try (ResultSet resultSet = statement.executeQuery(query)) {
-                    while (resultSet.next()) {
-                        String boatName = resultSet.getString("Nom du Bateau");
+                    while (resultSet.next()) {                        String boatName = resultSet.getString("Nom du Bateau");
                         String categories = resultSet.getString("Catégories");
                         String capacities = resultSet.getString("Capacités");
                         int numTraversees = resultSet.getInt("Nombre de Traversées");
@@ -72,8 +71,7 @@ public class MarieTeamAPI {
         System.out.println("Nombre total de bateaux trouvés: " + boats.size());
         return boats;
     }
-    
-    public Map<Integer, Map<String, Object>> getDetailedBoatsInfo() throws Exception {
+      public Map<Integer, Map<String, Object>> getDetailedBoatsInfo() throws Exception {
         Map<Integer, Map<String, Object>> boatsInfo = new HashMap<>();
         
         String query = "SELECT \n" +
@@ -81,7 +79,8 @@ public class MarieTeamAPI {
                 "    c.lettre, c.libelleCat,\n" +
                 "    co.capaciteMax,\n" +
                 "    COUNT(DISTINCT t.numTra) AS nombreTraversees,\n" +
-                "    GROUP_CONCAT(DISTINCT CONCAT(p1.nomPort, ' -> ', p2.nomPort) SEPARATOR ', ') AS liaisons\n" +
+                "    GROUP_CONCAT(DISTINCT CONCAT(p1.nomPort, ' -> ', p2.nomPort) SEPARATOR ', ') AS liaisons,\n" +
+                "    b.Equipements\n" +
                 "FROM \n" +
                 "    bateau b\n" +
                 "LEFT JOIN \n" +
@@ -97,7 +96,7 @@ public class MarieTeamAPI {
                 "LEFT JOIN \n" +
                 "    port p2 ON l.idPort_Arrivee = p2.idPort\n" +
                 "GROUP BY \n" +
-                "    b.idBat, b.nomBat, c.lettre, c.libelleCat, co.capaciteMax\n" +
+                "    b.idBat, b.nomBat, c.lettre, c.libelleCat, co.capaciteMax, b.Equipements\n" +
                 "ORDER BY b.nomBat;";
                 
         try (Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password)) {
@@ -106,14 +105,14 @@ public class MarieTeamAPI {
                     while (resultSet.next()) {
                         int idBat = resultSet.getInt("idBat");
                         Map<String, Object> boatInfo = new HashMap<>();
-                        
-                        boatInfo.put("id", idBat);
+                          boatInfo.put("id", idBat);
                         boatInfo.put("nom", resultSet.getString("nomBat"));
                         boatInfo.put("categorieLetter", resultSet.getString("lettre"));
                         boatInfo.put("categorieLibelle", resultSet.getString("libelleCat"));
                         boatInfo.put("capaciteMax", resultSet.getInt("capaciteMax"));
                         boatInfo.put("nombreTraversees", resultSet.getInt("nombreTraversees"));
                         boatInfo.put("liaisons", resultSet.getString("liaisons"));
+                        boatInfo.put("equipements", resultSet.getString("Equipements"));
                         
                         // Ajout des détails des traversées pour ce bateau
                         boatInfo.put("traversees", getBoatTraversees(idBat));
@@ -184,9 +183,7 @@ public class MarieTeamAPI {
         }
         System.out.println("Nombre total de traversées trouvées: " + traversees.size());
         return traversees;
-    }
-
-    public Map<String, Object> getBoatInfoByName(String boatName) throws Exception {
+    }    public Map<String, Object> getBoatInfoByName(String boatName) throws Exception {
         System.out.println("Recherche du bateau: " + boatName);
         Map<String, Object> boatInfo = new HashMap<>();
         
@@ -194,7 +191,8 @@ public class MarieTeamAPI {
                 "    b.idBat, b.nomBat,\n" +
                 "    c.lettre, c.libelleCat,\n" +
                 "    co.capaciteMax,\n" +
-                "    b.lienImage\n" +
+                "    b.lienImage,\n" +
+                "    b.Equipements\n" +
                 "FROM \n" +
                 "    bateau b\n" +
                 "LEFT JOIN \n" +
@@ -214,13 +212,13 @@ public class MarieTeamAPI {
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     if (resultSet.next()) {
                         int idBat = resultSet.getInt("idBat");
-                        System.out.println("Bateau trouvé avec l'ID: " + idBat);
-                        boatInfo.put("id", idBat);
+                        System.out.println("Bateau trouvé avec l'ID: " + idBat);                        boatInfo.put("id", idBat);
                         boatInfo.put("nom", resultSet.getString("nomBat"));
                         boatInfo.put("categorieLetter", resultSet.getString("lettre"));
                         boatInfo.put("categorieLibelle", resultSet.getString("libelleCat"));
                         boatInfo.put("capaciteMax", resultSet.getInt("capaciteMax"));
                         boatInfo.put("lienImage", resultSet.getString("lienImage"));
+                        boatInfo.put("equipements", resultSet.getString("Equipements"));
                         
                         System.out.println("Récupération des traversées pour le bateau ID: " + idBat);
                         ArrayList<Map<String, Object>> traversees = getBoatTraversees(idBat);

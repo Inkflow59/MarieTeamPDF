@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mer. 30 avr. 2025 à 14:06
+-- Généré le : jeu. 01 mai 2025 à 17:53
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -20,6 +20,8 @@ SET time_zone = "+00:00";
 --
 -- Base de données : `marieteam`
 --
+CREATE DATABASE IF NOT EXISTS `marieteam` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `marieteam`;
 
 -- --------------------------------------------------------
 
@@ -29,10 +31,9 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `admin` (
   `idAdmin` int(11) NOT NULL,
-  `nom` varchar(255) DEFAULT NULL,
-  `prenom` varchar(255) DEFAULT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL
+  `nomUtilisateur` text DEFAULT NULL,
+  `mdp` text DEFAULT NULL,
+  `lastLogin` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -44,7 +45,8 @@ CREATE TABLE `admin` (
 CREATE TABLE `bateau` (
   `idBat` int(11) NOT NULL,
   `nomBat` varchar(255) DEFAULT NULL,
-  `lienImage` varchar(255) DEFAULT NULL
+  `lienImage` varchar(255) DEFAULT NULL,
+  `Equipements` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -143,7 +145,7 @@ CREATE TRIGGER `PlusDePlace` BEFORE INSERT ON `reservation` FOR EACH ROW BEGIN
     DECLARE nombreReservations INT;
 
     -- Récupérer la capacité maximale du bateau lié à la traversée
-    SELECT contenir.capaciteMax 
+    SELECT MAX(contenir.capaciteMax)
     INTO capaciteBateau
     FROM contenir
     JOIN bateau ON contenir.idBat = bateau.idBat

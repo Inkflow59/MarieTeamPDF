@@ -99,12 +99,17 @@ public class GenererPDFController {
                 showError("Erreur", "Aucune information trouvée pour le bateau: " + simpleName);
                 return;
             }
-            
-            // Afficher les informations du bateau
+              // Afficher les informations du bateau
             bateauInfoBox.getChildren().clear();
             bateauInfoBox.getChildren().add(new Label("Nom: " + boatInfo.get("nom")));
             bateauInfoBox.getChildren().add(new Label("Catégorie: " + boatInfo.get("categorieLibelle")));
             bateauInfoBox.getChildren().add(new Label("Capacité: " + boatInfo.get("capaciteMax")));
+            
+            // Afficher les équipements du bateau s'ils existent
+            String equipements = (String) boatInfo.get("equipements");
+            if (equipements != null && !equipements.isEmpty()) {
+                bateauInfoBox.getChildren().add(new Label("Équipements: " + equipements));
+            }
             
             // Afficher les traversées
             Object traverseesObj = boatInfo.get("traversees");
@@ -159,41 +164,42 @@ public class GenererPDFController {
             try (PdfWriter writer = new PdfWriter(file);
                 PdfDocument pdf = new PdfDocument(writer);
                 Document document = new Document(pdf)) {
-            
-            // En-tête
+              // En-tête
             Paragraph title = new Paragraph("Rapport du bateau " + simpleName)
                 .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(20);
-            document.add(title);
-            
-            // Informations du bateau
-            document.add(new Paragraph("\nInformations du bateau:").setFontSize(16));
+                .setFontSize(16);
+            document.add(title);            // Informations du bateau
+            document.add(new Paragraph("Informations du bateau:").setFontSize(14).setMarginTop(8));
             Table bateauTable = new Table(2);
             bateauTable.setWidth(UnitValue.createPercentValue(100));
-            
             addTableRow(bateauTable, "Nom", (String) boatInfo.get("nom"));
             addTableRow(bateauTable, "Catégorie", (String) boatInfo.get("categorieLibelle"));
             addTableRow(bateauTable, "Capacité", String.valueOf(boatInfo.get("capaciteMax")));
-            
             document.add(bateauTable);
             
-            // Ajouter les informations des traversées s'il y en a (limité aux 10 premières)
+            // Ajouter les équipements s'ils existent
+            String equipements = (String) boatInfo.get("equipements");
+            if (equipements != null && !equipements.isEmpty()) {
+                String formattedEquipements = formatEquipements(equipements);
+                document.add(new Paragraph("Équipements:").setFontSize(14).setMarginTop(5));
+                document.add(new Paragraph(formattedEquipements).setFontSize(10).setMarginTop(2));
+            }            // Ajouter les informations des traversées s'il y en a (limité aux 10 premières)
             Object traverseesObj = boatInfo.get("traversees");
             if (traverseesObj instanceof ArrayList<?> && !((ArrayList<?>) traverseesObj).isEmpty()) {
-                document.add(new Paragraph("\nTraversées:").setFontSize(16));
+                document.add(new Paragraph("Traversées:").setFontSize(14).setMarginTop(5).setMarginBottom(2));
                 Table traverseesTable = new Table(5);
                 traverseesTable.setWidth(UnitValue.createPercentValue(100));
                 
                 // En-têtes
                 addTableRow(traverseesTable, "Date", "Heure", "Départ", "Arrivée", "Secteur");
                 
-                // Données des traversées (limité aux 10 premières)
+                // Données des traversées (limité aux 5 premières)
                 ArrayList<?> traversees = (ArrayList<?>) traverseesObj;
                 int count = 0;
-                int maxTraversees = 10; // Limiter à 10 traversées
+                int maxTraversees = 5; // Limiter à 5 traversées
                 
                 for (Object obj : traversees) {
-                    if (count >= maxTraversees) break; // Sortir après 10 traversées
+                    if (count >= maxTraversees) break; // Sortir après 5 traversées
                     
                     if (obj instanceof Map<?, ?>) {
                         @SuppressWarnings("unchecked")
@@ -211,9 +217,9 @@ public class GenererPDFController {
                 
                 document.add(traverseesTable);
                 
-                // Ajouter une note si plus de 10 traversées sont disponibles
+                // Ajouter une note si plus de 5 traversées sont disponibles
                 if (traversees.size() > maxTraversees) {
-                    document.add(new Paragraph("Note: Seules les 10 premières traversées sont affichées sur un total de " + traversees.size())
+                    document.add(new Paragraph("Note: Seules les 5 premières traversées sont affichées sur un total de " + traversees.size())
                         .setFontSize(10)
                         .setItalic());
                 }
@@ -233,18 +239,18 @@ public class GenererPDFController {
                     byte[] imageData = java.nio.file.Files.readAllBytes(imageFile.toPath());
                     Image image = new Image(ImageDataFactory.create(imageData));
                     image.setWidth(UnitValue.createPercentValue(60));
-                    image.setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);
-                    document.add(new Paragraph("\nImage du bateau:").setFontSize(16));
+                    image.setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);                    document.add(new Paragraph("\nImage du bateau:").setFontSize(14));
                     document.add(image);
                     System.out.println("Image ajoutée au PDF avec succès");
-                } else {                System.err.println("Aucune image trouvée pour le bateau: " + simpleName);
-                    document.add(new Paragraph("\nAucune image disponible pour ce bateau").setFontSize(14).setItalic());
+                    } else {
+                        System.err.println("Aucune image trouvée pour le bateau: " + simpleName);
+                        document.add(new Paragraph("\nAucune image disponible pour ce bateau").setFontSize(12).setItalic());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Erreur lors de l'ajout de l'image au PDF: " + e.getMessage());
+                    e.printStackTrace();
+                    document.add(new Paragraph("\nErreur lors du chargement de l'image").setFontSize(12).setItalic());
                 }
-            } catch (Exception e) {
-                System.err.println("Erreur lors de l'ajout de l'image au PDF: " + e.getMessage());
-                e.printStackTrace();
-                document.add(new Paragraph("\nErreur lors du chargement de l'image").setFontSize(14).setItalic());
-            }
             }
               // Le document se fermera automatiquement avec try-with-resources
             showInfo("Succès", "Le PDF a été généré avec succès!");
@@ -255,17 +261,14 @@ public class GenererPDFController {
         } catch (IOException e) {
             System.err.println("Erreur d'entrée/sortie: " + e.getMessage());
             showError("Erreur lors de la génération du PDF", "Erreur lors de l'écriture du PDF. " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Erreur inattendue: " + e.getMessage());
-            e.printStackTrace();
-            showError("Erreur lors de la récupération des données", "Une erreur est survenue. " + e.getMessage());
+        } catch (Exception e) {            System.err.println("Erreur inattendue: " + e.getMessage());
+            e.printStackTrace();            showError("Erreur lors de la récupération des données", "Une erreur est survenue. " + e.getMessage());
         }
     }
-    
-    private void addTableRow(Table table, String... cells) {
+      private void addTableRow(Table table, String... cells) {
         for (String cell : cells) {
             String cellValue = (cell != null) ? cell : "";
-            table.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(cellValue)));
+            table.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(cellValue).setFontSize(10)));
         }
     }
       @FXML
@@ -276,6 +279,34 @@ public class GenererPDFController {
             System.err.println("Erreur lors du retour à l'accueil: " + e.getMessage());
             showError("Erreur lors du retour à l'accueil", e.getMessage());
         }
+    }
+    
+    /**
+     * Formate une chaîne d'équipements en une liste à puces
+     * @param equipementsStr La chaîne contenant les équipements séparés par des virgules
+     * @return Une chaîne formatée avec des puces
+     */    private String formatEquipements(String equipementsStr) {
+        if (equipementsStr == null || equipementsStr.trim().isEmpty()) {
+            return "";
+        }
+        
+        String[] equipements = equipementsStr.split(",");
+        StringBuilder formattedEquipements = new StringBuilder();
+        
+        for (String equipement : equipements) {
+            String equip = equipement.trim();
+            if (!equip.isEmpty()) {
+                // Mettre la première lettre en majuscule
+                if (equip.length() > 1) {
+                    equip = equip.substring(0, 1).toUpperCase() + equip.substring(1);
+                } else if (equip.length() == 1) {
+                    equip = equip.toUpperCase();
+                }
+                formattedEquipements.append("• ").append(equip).append("\n");
+            }
+        }
+        
+        return formattedEquipements.toString().trim();
     }
     
     private void showError(String title, String content) {
