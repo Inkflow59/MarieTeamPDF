@@ -24,6 +24,8 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
@@ -47,9 +49,26 @@ public class GenererPDFController {
     @FXML
     private VBox traverseesInfoBox;
     
+    @FXML
+    private TextField txtNom;
+    
+    @FXML
+    private TextField txtCapacite;
+    
+    @FXML
+    private TextArea txtEquipements;
+    
+    @FXML
+    private Button btnEnregistrer;
+    
+    @FXML
+    private VBox bateauEditBox;
+    
     private String selectedBateau;
     private final ObservableList<String> bateauxList = FXCollections.observableArrayList();
     private MarieTeamAPI api;
+    
+    private int selectedBoatId;
     
     @FXML
     public void initialize() {
@@ -104,47 +123,31 @@ public class GenererPDFController {
             bateauInfoBox.getChildren().add(new Label("Nom: " + boatInfo.get("nom")));
             bateauInfoBox.getChildren().add(new Label("Catégorie: " + boatInfo.get("categorieLibelle")));
             bateauInfoBox.getChildren().add(new Label("Capacité: " + boatInfo.get("capaciteMax")));
-            
-            // Afficher les équipements du bateau s'ils existent
+              // Afficher les équipements du bateau s'ils existent
             String equipements = (String) boatInfo.get("equipements");
             if (equipements != null && !equipements.isEmpty()) {
                 bateauInfoBox.getChildren().add(new Label("Équipements: " + equipements));
             }
             
-            // Afficher les traversées
-            Object traverseesObj = boatInfo.get("traversees");
-            if (traverseesObj instanceof ArrayList<?> traversees) {
-                traverseesInfoBox.getChildren().clear();
-                
-                if (traversees.isEmpty()) {
-                    traverseesInfoBox.getChildren().add(new Label("Aucune traversée trouvée pour ce bateau"));
-                } else {
-                    for (Object obj : traversees) {
-                        if (obj instanceof Map<?, ?> traversee) {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> map = (Map<String, Object>) traversee;
-                            VBox traverseeBox = new VBox(5);
-                            traverseeBox.getChildren().add(new Label("Date: " + map.get("date")));
-                            traverseeBox.getChildren().add(new Label("Heure: " + map.get("heure")));
-                            traverseeBox.getChildren().add(new Label("Port de départ: " + map.get("portDepart")));
-                            traverseeBox.getChildren().add(new Label("Port d'arrivée: " + map.get("portArrivee")));
-                            traverseeBox.getChildren().add(new Label("Secteur: " + map.get("secteur")));
-                            traverseesInfoBox.getChildren().add(traverseeBox);
-                        }
-                    }
-                }
-                
-                btnGenererPDF.setDisable(false);
-            } else {
-                traverseesInfoBox.getChildren().clear();
-                traverseesInfoBox.getChildren().add(new Label("Format de données de traversées invalide"));
-            }
+            // Ne pas afficher les traversées dans l'interface
+            // Mais on active quand même le bouton pour générer le PDF
+            btnGenererPDF.setDisable(false);
+            
+            // Préparer l'édition des champs
+            txtNom.setText((String) boatInfo.get("nom"));
+            txtCapacite.setText(String.valueOf(boatInfo.get("capaciteMax")));
+            txtEquipements.setText(equipements);
+            
+            // Afficher la section d'édition
+            bateauEditBox.setVisible(true);
+            
+            // Stocker l'ID du bateau sélectionné pour la mise à jour
+            selectedBoatId = (int) boatInfo.get("id");
         } catch (Exception e) {
             System.err.println("Erreur lors de la récupération des informations: " + e.getMessage());
             showError("Erreur lors de la récupération des informations", "Détails: " + e.getMessage());
         }
-    }    @FXML
-    public void genererPDF() { // changé en public pour être appelable par FXML
+    }    @FXML    public void genererPDF() { // changé en public pour être appelable par FXML
         if (selectedBateau == null) return;
         
         FileChooser fileChooser = new FileChooser();
@@ -159,7 +162,21 @@ public class GenererPDFController {
         try {
             // Extraire le nom simple du bateau (avant le premier " - ")
             String simpleName = selectedBateau.split(" - ")[0];
+            
+            // Récupérer les données du bateau depuis l'API pour avoir les traversées
             Map<String, Object> boatInfo = api.getBoatInfoByName(simpleName);
+            
+            // Utiliser les valeurs modifiées localement pour les champs principaux si elles sont disponibles
+            if (bateauEditBox.isVisible()) {
+                // Remplacer les valeurs par celles modifiées par l'utilisateur
+                boatInfo.put("nom", txtNom.getText().trim());
+                try {
+                    boatInfo.put("capaciteMax", Integer.parseInt(txtCapacite.getText().trim()));
+                } catch (NumberFormatException e) {
+                    // Garder la valeur originale en cas d'erreur
+                }
+                boatInfo.put("equipements", txtEquipements.getText().trim());
+            }
               // Utiliser try-with-resources pour fermer automatiquement les ressources
             try (PdfWriter writer = new PdfWriter(file);
                 PdfDocument pdf = new PdfDocument(writer);
@@ -176,52 +193,51 @@ public class GenererPDFController {
             addTableRow(bateauTable, "Catégorie", (String) boatInfo.get("categorieLibelle"));
             addTableRow(bateauTable, "Capacité", String.valueOf(boatInfo.get("capaciteMax")));
             document.add(bateauTable);
-            
-            // Ajouter les équipements s'ils existent
+
+              // Ajouter les équipements s'ils existent
             String equipements = (String) boatInfo.get("equipements");
             if (equipements != null && !equipements.isEmpty()) {
                 String formattedEquipements = formatEquipements(equipements);
                 document.add(new Paragraph("Équipements:").setFontSize(14).setMarginTop(5));
                 document.add(new Paragraph(formattedEquipements).setFontSize(10).setMarginTop(2));
-            }            // Ajouter les informations des traversées s'il y en a (limité aux 10 premières)
+            }
+            
+            // Ajouter les 5 premières traversées au PDF, même si elles ne sont pas affichées dans l'interface
             Object traverseesObj = boatInfo.get("traversees");
-            if (traverseesObj instanceof ArrayList<?> && !((ArrayList<?>) traverseesObj).isEmpty()) {
-                document.add(new Paragraph("Traversées:").setFontSize(14).setMarginTop(5).setMarginBottom(2));
-                Table traverseesTable = new Table(5);
-                traverseesTable.setWidth(UnitValue.createPercentValue(100));
+            if (traverseesObj instanceof ArrayList<?> traversees) {
+                document.add(new Paragraph("\nTraversées (Les 5 premières):").setFontSize(14).setMarginTop(5));
                 
-                // En-têtes
-                addTableRow(traverseesTable, "Date", "Heure", "Départ", "Arrivée", "Secteur");
-                
-                // Données des traversées (limité aux 5 premières)
-                ArrayList<?> traversees = (ArrayList<?>) traverseesObj;
-                int count = 0;
-                int maxTraversees = 5; // Limiter à 5 traversées
-                
-                for (Object obj : traversees) {
-                    if (count >= maxTraversees) break; // Sortir après 5 traversées
+                if (traversees.isEmpty()) {
+                    document.add(new Paragraph("Aucune traversée trouvée pour ce bateau").setFontSize(10).setItalic());
+                } else {
+                    // Créer un tableau pour les traversées
+                    Table traverseesTable = new Table(5);
+                    traverseesTable.setWidth(UnitValue.createPercentValue(100));
                     
-                    if (obj instanceof Map<?, ?>) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> traversee = (Map<String, Object>) obj;
-                        addTableRow(traverseesTable, 
-                            String.valueOf(traversee.get("date")),
-                            String.valueOf(traversee.get("heure")),
-                            String.valueOf(traversee.get("portDepart")),
-                            String.valueOf(traversee.get("portArrivee")),
-                            String.valueOf(traversee.get("secteur"))
-                        );
-                        count++;
+                    // En-têtes du tableau
+                    addTableRow(traverseesTable, "Date", "Heure", "Port de départ", "Port d'arrivée", "Secteur");
+                    
+                    // Ajouter les 5 premières traversées (ou moins s'il y en a moins de 5)
+                    int count = 0;
+                    for (Object obj : traversees) {
+                        if (count >= 5) break; // Limiter à 5 traversées
+                        
+                        if (obj instanceof Map<?, ?> traversee) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = (Map<String, Object>) traversee;
+                            
+                            addTableRow(traverseesTable, 
+                                String.valueOf(map.get("date")),
+                                String.valueOf(map.get("heure")),
+                                String.valueOf(map.get("portDepart")),
+                                String.valueOf(map.get("portArrivee")),
+                                String.valueOf(map.get("secteur"))
+                            );
+                            count++;
+                        }
                     }
-                }
-                
-                document.add(traverseesTable);
-                
-                // Ajouter une note si plus de 5 traversées sont disponibles
-                if (traversees.size() > maxTraversees) {
-                    document.add(new Paragraph("Note: Seules les 5 premières traversées sont affichées sur un total de " + traversees.size())
-                        .setFontSize(10)
-                        .setItalic());
+                    
+                    document.add(traverseesTable);
                 }
             }
             
@@ -422,5 +438,61 @@ public class GenererPDFController {
         
         System.out.println("Aucune image trouvée pour le bateau: " + boatName);
         return null;
+    }
+      /**
+     * Simule l'enregistrement des modifications apportées aux informations du bateau
+     * Les changements sont affichés dans l'interface mais ne sont pas sauvegardés dans la base de données
+     */
+    @FXML
+    public void enregistrerModifications() {
+        if (selectedBoatId <= 0) {
+            showError("Erreur", "Aucun bateau sélectionné pour la mise à jour");
+            return;
+        }
+        
+        try {
+            // Récupérer les valeurs des champs
+            String nom = txtNom.getText().trim();
+            String capaciteStr = txtCapacite.getText().trim();
+            String equipements = txtEquipements.getText().trim();
+            
+            // Validation des entrées
+            if (nom.isEmpty()) {
+                showError("Erreur de validation", "Le nom du bateau ne peut pas être vide");
+                return;
+            }
+            
+            int capacite;
+            try {
+                capacite = Integer.parseInt(capaciteStr);
+                if (capacite <= 0) {
+                    showError("Erreur de validation", "La capacité doit être un nombre positif");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                showError("Erreur de validation", "La capacité doit être un nombre entier valide");
+                return;
+            }
+            
+            // Simuler la mise à jour (ne pas appeler l'API)
+            showInfo("Succès", "Les informations du bateau ont été mises à jour localement");
+            
+            // Mettre à jour l'affichage des informations (localement)
+            bateauInfoBox.getChildren().clear();
+            bateauInfoBox.getChildren().add(new Label("Nom: " + nom));
+            bateauInfoBox.getChildren().add(new Label("Catégorie: " + 
+                                           (selectedBateau.split(" - ").length > 1 ? 
+                                           selectedBateau.split(" - ")[1].split(" \\(")[0] : "N/A")));
+            bateauInfoBox.getChildren().add(new Label("Capacité: " + capacite));
+            
+            if (!equipements.isEmpty()) {
+                bateauInfoBox.getChildren().add(new Label("Équipements: " + equipements));
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la mise à jour des informations: " + e.getMessage());
+            e.printStackTrace();
+            showError("Erreur lors de la mise à jour", "Détails: " + e.getMessage());
+        }
     }
 }

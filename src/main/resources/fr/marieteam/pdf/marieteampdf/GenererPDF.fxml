@@ -66,23 +66,60 @@
                            <font>
                               <Font size="20.0" />
                            </font>
-                        </Label>
-                        <VBox fx:id="bateauInfoBox" spacing="10.0">
+                        </Label>                        <VBox fx:id="bateauInfoBox" spacing="20.0">
                            <children>
-                              <Label text="Veuillez sélectionner un bateau pour afficher ses informations">
+                              <Label text="Veuillez sélectionner un bateau pour afficher et éditer ses informations">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
                               </Label>
                            </children>
                         </VBox>
-                        <Separator />
-                        <Label styleClass="welcome-subtitle" text="Liste des traversées">
-                           <font>
-                              <Font size="20.0" />
-                           </font>
-                        </Label>
-                        <VBox fx:id="traverseesInfoBox" spacing="10.0">
+                        <VBox fx:id="bateauEditBox" spacing="15.0" visible="false">
+                           <children>
+                              <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                 <children>
+                                    <Label text="Nom:" prefWidth="100.0">
+                                       <font>
+                                          <Font size="14.0" />
+                                       </font>
+                                    </Label>
+                                    <javafx.scene.control.TextField fx:id="txtNom" prefWidth="300.0" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                 <children>
+                                    <Label text="Capacité:" prefWidth="100.0">
+                                       <font>
+                                          <Font size="14.0" />
+                                       </font>
+                                    </Label>
+                                    <javafx.scene.control.TextField fx:id="txtCapacite" prefWidth="300.0" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                 <children>
+                                    <Label text="Équipements:" prefWidth="100.0">
+                                       <font>
+                                          <Font size="14.0" />
+                                       </font>
+                                    </Label>
+                                    <javafx.scene.control.TextArea fx:id="txtEquipements" prefWidth="300.0" prefHeight="80.0" wrapText="true" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER" spacing="15.0">
+                                 <children>
+                                    <Button fx:id="btnEnregistrer" mnemonicParsing="false" onAction="#enregistrerModifications" prefHeight="40.0" styleClass="welcome-button" text="Enregistrer les modifications">
+                                       <font>
+                                          <Font name="System Bold" size="14.0" />
+                                       </font>
+                                    </Button>
+                                 </children>
+                                 <padding>
+                                    <Insets top="10.0" />
+                                 </padding>
+                              </HBox>
+                           </children>
                         </VBox>
                      </children>
                   </VBox>

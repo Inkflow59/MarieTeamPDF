@@ -8,6 +8,7 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -260,5 +261,76 @@ public class MarieTeamAPI {
         } catch (Exception e) {
             System.err.println("Erreur lors du téléchargement de l'image pour le bateau " + boatName + ": " + e.getMessage());
         }
+    }
+    
+    /**
+     * Met à jour les informations d'un bateau dans la base de données
+     * @param idBat l'identifiant du bateau
+     * @param nomBat le nouveau nom du bateau
+     * @param capaciteMax la nouvelle capacité maximale
+     * @param equipements les nouveaux équipements
+     * @return true si la mise à jour a réussi, false sinon
+     */
+    public boolean updateBoatInfo(int idBat, String nomBat, int capaciteMax, String equipements) throws Exception {
+        System.out.println("Mise à jour des informations pour le bateau ID: " + idBat);
+        boolean success = false;
+        
+        // Requête pour mettre à jour le nom et les équipements du bateau
+        String updateBateau = "UPDATE bateau SET nomBat = ?, Equipements = ? WHERE idBat = ?";
+        
+        // Requête pour mettre à jour la capacité
+        String updateContenir = "UPDATE contenir SET capaciteMax = ? WHERE idBat = ?";
+        
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password);
+            connection.setAutoCommit(false);  // Commencer une transaction
+            
+            // Mettre à jour le nom et les équipements
+            try (java.sql.PreparedStatement psBateau = connection.prepareStatement(updateBateau)) {
+                psBateau.setString(1, nomBat);
+                psBateau.setString(2, equipements);
+                psBateau.setInt(3, idBat);
+                
+                int rowsUpdatedBateau = psBateau.executeUpdate();
+                System.out.println("Bateau mis à jour, lignes affectées: " + rowsUpdatedBateau);
+            }
+            
+            // Mettre à jour la capacité
+            try (java.sql.PreparedStatement psContenir = connection.prepareStatement(updateContenir)) {
+                psContenir.setInt(1, capaciteMax);
+                psContenir.setInt(2, idBat);
+                
+                int rowsUpdatedContenir = psContenir.executeUpdate();
+                System.out.println("Capacité mise à jour, lignes affectées: " + rowsUpdatedContenir);
+            }
+            
+            connection.commit();  // Valider la transaction
+            success = true;
+            System.out.println("Mise à jour des informations du bateau réussie");
+            
+        } catch (Exception e) {
+            if (connection != null) {
+                try {
+                    connection.rollback();  // Annuler la transaction en cas d'erreur
+                } catch (SQLException se) {
+                    System.err.println("Erreur lors du rollback: " + se.getMessage());
+                }
+            }
+            System.err.println("Erreur lors de la mise à jour des informations du bateau: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.setAutoCommit(true);
+                    connection.close();
+                } catch (SQLException se) {
+                    System.err.println("Erreur lors de la fermeture de la connexion: " + se.getMessage());
+                }
+            }
+        }
+        
+        return success;
     }
 }
