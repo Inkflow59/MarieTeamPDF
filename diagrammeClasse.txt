@@ -1,0 +1,133 @@
+@startuml
+' Diagramme de classes pour le projet MarieTeamPDF
+
+' Application principale
+class MainApp {
+  - static Stage primaryStage
+  + static void setRoot(String fxml)
+  + void start(Stage stage)
+  + static void main(String[] args)
+}
+
+' Point d'entrée pour le packaging
+class Launcher {
+  + static void main(String[] args)
+}
+
+' Écran d'accueil
+class WelcomeController {
+  - Button btnGenererPDF
+  - void navigateToGenererPDF(ActionEvent event)
+}
+
+' Écran principal de génération de PDF
+class GenererPDFController {
+  - ComboBox<String> comboBoxBateaux
+  - Button btnAfficherInfo
+  - Button btnGenererPDF
+  - Button btnRetour
+  - VBox bateauInfoBox
+  - VBox traverseesInfoBox
+  - TextField txtNom
+  - TextField txtCapacite
+  - TextArea txtEquipements
+  - Button btnEnregistrer
+  - VBox bateauEditBox
+  - String selectedBateau
+  - ObservableList<String> bateauxList
+  - MarieTeamAPI api
+  - int selectedBoatId
+  
+  + void initialize()
+  - void loadBateaux()
+  + void afficherInformationsBateau()
+  + void genererPDF()
+  - void addTableRow(Table table, String... cells)
+  + void retourAccueil()
+  - String formatEquipements(String equipementsStr)
+  - void showError(String title, String content)
+  - void showInfo(String title, String content)
+  - File findBoatImage(String boatName)
+  + void enregistrerModifications()
+}
+
+' API pour accéder à la base de données
+class MarieTeamAPI {
+  - String hostname
+  - String port
+  - String database
+  - String username
+  - String password
+  
+  + ArrayList<String> getAllBoats()
+  + Map<Integer, Map<String, Object>> getDetailedBoatsInfo()
+  - ArrayList<Map<String, Object>> getBoatTraversees(int idBat)
+  + Map<String, Object> getBoatInfoByName(String boatName)
+  - void downloadBoatImage(String boatName, String imageUrl)
+  + boolean updateBoatInfo(int idBat, String nomBat, int capaciteMax, String equipements)
+}
+
+' Modèles de données (inférés à partir du code)
+class Bateau {
+  - int idBat
+  - String nomBat
+  - String lienImage
+  - String Equipements
+}
+
+class Categorie {
+  - String lettre
+  - String libelleCat
+}
+
+class Contenir {
+  - int idBat
+  - String lettre
+  - int capaciteMax
+}
+
+class Traversee {
+  - int numTra
+  - Date date
+  - Time heure
+  - int idBat
+  - String code
+}
+
+class Liaison {
+  - String code
+  - float distance
+  - Time tempsLiaison
+  - int idPort_Depart
+  - int idPort_Arrivee
+  - int idSecteur
+}
+
+class Port {
+  - int idPort
+  - String nomPort
+}
+
+class Secteur {
+  - int idSecteur
+  - String nomSecteur
+}
+
+' Relations entre classes
+Launcher -- MainApp : utilise >
+MainApp -- WelcomeController : crée >
+MainApp -- GenererPDFController : crée >
+WelcomeController -- MainApp : appelle setRoot >
+GenererPDFController -- MainApp : appelle setRoot >
+GenererPDFController -- MarieTeamAPI : utilise >
+
+' Relations de la base de données
+Bateau "1" -- "1..*" Contenir : possède >
+Categorie "1" -- "1..*" Contenir : classifie >
+Bateau "1" -- "0..*" Traversee : effectue >
+Traversee "0..*" -- "1" Liaison : suit >
+Liaison "0..*" -- "1" Port : part de >
+Liaison "0..*" -- "1" Port : arrive à >
+Liaison "0..*" -- "1" Secteur : appartient à >
+
+@enduml

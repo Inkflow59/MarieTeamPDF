@@ -112,8 +112,7 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.36</version>
-        </dependency>
-        <dependency>
+        </dependency>        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>${junit.version}</version>
@@ -123,6 +122,30 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.8.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.8.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-core</artifactId>
+            <version>4.0.17</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>4.0.17</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -139,8 +162,7 @@
                 </includes>
             </resource>
         </resources>
-        <plugins>
-            <plugin>
+        <plugins>            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
@@ -149,7 +171,19 @@
                     <target>17</target>
                     <release>17</release>
                 </configuration>
-            </plugin>            <plugin>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <!-- Configuration pour les tests JavaFX -->
+                    <argLine>
+                        --add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin><plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>

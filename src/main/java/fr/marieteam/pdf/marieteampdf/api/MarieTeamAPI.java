@@ -17,9 +17,18 @@ import java.util.Map;
 public class MarieTeamAPI {
     private final String hostname = "localhost";
     private final String port = "3306";
-    private final String database = "marieteam";
-    private final String username = "root";
+    private final String database = "marieteam";    private final String username = "root";
     private final String password = "";
+    
+    /**
+     * Obtient une connexion à la base de données
+     * Cette méthode est protégée pour permettre de la surcharger dans les tests
+     * @return une connexion à la base de données
+     * @throws SQLException si une erreur survient lors de la connexion
+     */
+    protected Connection getConnection() throws SQLException {
+        return DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password);
+    }
     
     public ArrayList<String> getAllBoats() throws Exception {
         System.out.println("Récupération de la liste des bateaux");
@@ -41,7 +50,7 @@ public class MarieTeamAPI {
                 "GROUP BY \n" +
                 "    b.idBat, b.nomBat, b.Equipements\n" +
                 "ORDER BY b.nomBat;";
-        try (Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port + "/" + database, username, password)) {
+        try (Connection connection = getConnection()) {
             System.out.println("Connexion à la base de données établie");
             try (Statement statement = connection.createStatement()) {
                 System.out.println("Exécution de la requête: " + query);
